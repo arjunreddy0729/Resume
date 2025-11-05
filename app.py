@@ -3,6 +3,8 @@ import pickle
 import fitz  # PyMuPDF
 import docx
 import re
+import os
+
 import numpy as np
 
 app = Flask(__name__)
@@ -83,6 +85,6 @@ def predict():
         confidence=confidence,
         skills=found_skills
     )
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
