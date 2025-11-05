@@ -75,8 +75,18 @@
       </div>
     {% endif %}
 
-    {% if score %}
-      <h5 class="mt-4">Resume Score: <span class="text-warning">{{ score }}/10</span></h5>
+    {% if match_score %}
+      <h5 class="mt-3">Job Match Score: <span class="text-success">{{ match_score }}%</span></h5>
+      <div class="progress mb-3" style="height: 20px;">
+        <div
+          id="matchBar"
+          class="progress-bar bg-info"
+          role="progressbar"
+          aria-valuenow="{{ match_score }}"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        ></div>
+      </div>
     {% endif %}
 
     {% if skills %}
@@ -86,35 +96,30 @@
       {% endfor %}
     {% endif %}
 
-    {% if missing %}
-      <h5 class="mt-4 text-danger">Missing Skills:</h5>
-      {% for m in missing %}
-        <span class="skill-chip text-danger">{{ m }}</span>
-      {% endfor %}
-    {% endif %}
-
-    {% if suggested %}
-      <h5 class="mt-4 text-info">Suggested Related Roles:</h5>
-      <p>{{ suggested | join(", ") }}</p>
-    {% endif %}
-
     <canvas id="skillChart" height="150" class="mt-4"></canvas>
 
     <a href="/" class="btn btn-outline-light mt-4">← Upload Another Resume</a>
+
+    <form action="/download_report" method="POST">
+      <input type="hidden" name="prediction" value="{{ prediction }}">
+      <input type="hidden" name="confidence" value="{{ confidence }}">
+      <input type="hidden" name="skills" value="{{ skills|join(', ') }}">
+      <input type="hidden" name="match_score" value="{{ match_score }}">
+      <button type="submit" class="btn btn-success mt-3">⬇️ Download Report</button>
+    </form>
   </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const confidenceVal = Number("{{ confidence|default(0) }}");
-      const scoreVal = Number("{{ score|default(0) }}");
+      const matchVal = Number("{{ match_score|default(0) }}");
 
-      // Dynamically set progress width
-      const bar = document.getElementById("confidenceBar");
-      if (bar) {
-        bar.style.width = confidenceVal + "%";
-      }
+      const confBar = document.getElementById("confidenceBar");
+      if (confBar) confBar.style.width = confidenceVal + "%";
 
-      // Radar chart
+      const matchBar = document.getElementById("matchBar");
+      if (matchBar) matchBar.style.width = matchVal + "%";
+
       const ctx = document.getElementById("skillChart");
       if (!ctx) return;
 
@@ -124,7 +129,7 @@
           labels: ["Technical", "Analytical", "Leadership", "Communication", "Management"],
           datasets: [{
             label: "Resume Strength",
-            data: [confidenceVal / 20, scoreVal, 8, 7, 6],
+            data: [confidenceVal / 20, matchVal / 10, 8, 7, 6],
             fill: true,
             backgroundColor: "rgba(75,192,192,0.2)",
             borderColor: "rgb(75,192,192)",
@@ -141,9 +146,7 @@
               pointLabels: { color: "#fff" }
             }
           },
-          plugins: {
-            legend: { display: false }
-          }
+          plugins: { legend: { display: false } }
         }
       });
     });

@@ -1,16 +1,23 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 import pickle
 import fitz  # PyMuPDF
 import docx
+import re
 import os
 import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
 
+# -----------------------------
 # Load trained model
+# -----------------------------
 model = pickle.load(open('model_res.pkl', 'rb'))
 
-# Job category mapping
+# Example job category mapping
 job_labels = {
     0: "Data Analyst",
     1: "Software Engineer",
@@ -21,27 +28,19 @@ job_labels = {
     6: "Project Manager"
 }
 
-# Common skills list
+# Skills to detect
 SKILLS = [
     "python", "java", "sql", "excel", "machine learning", "data analysis",
     "tensorflow", "pandas", "flask", "communication", "leadership",
     "project management", "teamwork", "javascript", "power bi", "tableau"
 ]
 
-# Role-based expected skills
-ROLE_SKILLS = {
-    "Data Analyst": ["sql", "excel", "pandas", "tableau", "power bi", "data analysis"],
-    "Software Engineer": ["python", "java", "flask", "javascript", "teamwork"],
-    "Machine Learning Engineer": ["python", "tensorflow", "pandas", "machine learning", "data analysis"],
-    "HR Specialist": ["communication", "leadership", "teamwork"],
-    "Marketing Executive": ["communication", "excel", "data analysis", "teamwork"],
-    "Business Analyst": ["excel", "sql", "power bi", "data analysis", "communication"],
-    "Project Manager": ["leadership", "project management", "communication", "teamwork"]
-}
 
-
+# -----------------------------
+# Utility Functions
+# -----------------------------
 def extract_text(file):
-    """Extract text from PDF, DOCX, or TXT files."""
+    """Extract text from pdf, docx, or txt file."""
     filename = file.filename.lower()
     if filename.endswith('.pdf'):
         with fitz.open(stream=file.read(), filetype="pdf") as doc:
@@ -50,19 +49,34 @@ def extract_text(file):
                 text += page.get_text("text")
         return text
     elif filename.endswith('.docx'):
-        document = docx.Document(file)
-        return " ".join([p.text for p in document.paragraphs])
+        docx_file = docx.Document(file)
+        return " ".join([para.text for para in docx_file.paragraphs])
     elif filename.endswith('.txt'):
-        return file.read().decode('utf-8', errors='ignore')
-    return ""
+        return file.read().decode('utf-8')
+    else:
+        return ""
 
 
 def extract_skills(text):
-    """Keyword matching for skills."""
+    """Simple keyword matching for skill extraction."""
     text_lower = text.lower()
-    return sorted(set(skill for skill in SKILLS if skill in text_lower))
+    found_skills = [skill for skill in SKILLS if skill in text_lower]
+    return list(set(found_skills))
 
 
+def job_match_score(resume_text, jd_text):
+    """Compute similarity between resume text and job description."""
+    if not jd_text.strip():
+        return None
+    vectorizer = TfidfVectorizer(stop_words='english')
+    vectors = vectorizer.fit_transform([resume_text, jd_text])
+    score = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
+    return round(score * 100, 2)
+
+
+# -----------------------------
+# Routes
+# -----------------------------
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -70,7 +84,9 @@ def index():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    file = request.files.get('resume')
+    file = request.files['resume']
+    jd_text = request.form.get('jobdesc', '')
+
     if not file:
         return render_template('result.html', prediction="No file uploaded")
 
@@ -78,38 +94,59 @@ def predict():
     if not text.strip():
         return render_template('result.html', prediction="Invalid or empty file")
 
-    # Model prediction
+    # Predict category
     pred_probs = model.predict_proba([text])[0]
     pred_class = np.argmax(pred_probs)
     confidence = round(pred_probs[pred_class] * 100, 2)
-    job_title = job_labels.get(pred_class, "Unknown")
+    job_title = job_labels.get(pred_class, "Unknown Category")
 
-    # Skill matching
+    # Extract skills + match score
     found_skills = extract_skills(text)
-    ideal_skills = ROLE_SKILLS.get(job_title, [])
-    missing_skills = [s for s in ideal_skills if s not in found_skills]
-
-    # Resume score
-    skill_match = (len(found_skills) / len(SKILLS)) * 100
-    resume_score = round((0.7 * confidence + 0.3 * skill_match) / 10, 2)
-
-    # Suggested related roles
-    suggested = [
-        r for r, s in ROLE_SKILLS.items()
-        if len(set(found_skills) & set(s)) >= 3 and r != job_title
-    ]
+    match_score = job_match_score(text, jd_text)
 
     return render_template(
         'result.html',
         prediction=job_title,
         confidence=confidence,
-        score=resume_score,
         skills=found_skills,
-        missing=missing_skills,
-        suggested=suggested
+        match_score=match_score
     )
 
 
+@app.route('/download_report', methods=['POST'])
+def download_report():
+    """Generate and download a PDF report."""
+    data = request.form
+    prediction = data.get('prediction')
+    confidence = data.get('confidence')
+    skills = data.get('skills')
+    match_score = data.get('match_score')
+
+    filename = "resume_analysis_report.pdf"
+    c = canvas.Canvas(filename, pagesize=A4)
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(100, 800, "Resume Analysis Report")
+
+    c.setFont("Helvetica", 12)
+    y = 770
+    lines = [
+        f"Predicted Role: {prediction}",
+        f"Confidence: {confidence}%",
+        f"Match Score: {match_score if match_score else 'N/A'}%",
+        f"Skills Found: {skills}"
+    ]
+    for line in lines:
+        c.drawString(100, y, line)
+        y -= 20
+
+    c.save()
+    return send_file(filename, as_attachment=True)
+
+
+# -----------------------------
+# Run the app (Render uses PORT env)
+# -----------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
