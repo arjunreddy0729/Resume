@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prediction Result</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Predicted Job Category</h1>
+    <h2>{{ prediction }}</h2>
+    <a href="/">← Upload another resume</a>
+  </div>
+</body>
+</html>

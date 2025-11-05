@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TalentTracer - Resume Screening</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>ML-Driven Resume Screening</h1>
+    <p>Upload your resume below (PDF, DOCX, or TXT) to predict your job category.</p>
+    <form action="/predict" method="post" enctype="multipart/form-data">
+      <input type="file" name="resume" accept=".pdf,.docx,.txt" required>
+      <button type="submit">Analyze Resume</button>
+    </form>
+  </div>
+</body>
+</html>
