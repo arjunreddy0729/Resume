@@ -1,32 +1,33 @@
 body {
-  font-family: Arial, sans-serif;
-  background: #0f2027;
-  background: linear-gradient(to right, #2c5364, #203a43, #0f2027);
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(to right, #1f4037, #99f2c8);
   color: white;
   text-align: center;
-  padding-top: 100px;
+  padding-top: 80px;
 }
 
 .container {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.4);
   padding: 40px;
   border-radius: 20px;
-  display: inline-block;
+  width: 50%;
+  margin: auto;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-input[type="file"] {
-  margin: 20px 0;
+.highlight {
+  color: #00ffcc;
+  font-size: 32px;
 }
 
-button {
-  padding: 10px 20px;
-  background-color: #1abc9c;
-  border: none;
-  color: white;
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  background-color: rgba(255,255,255,0.1);
+  margin: 8px;
+  padding: 10px;
   border-radius: 8px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #16a085;
 }

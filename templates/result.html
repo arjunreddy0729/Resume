@@ -2,13 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Prediction Result</title>
+  <title>Resume Analysis Result</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <div class="container">
     <h1>Predicted Job Category</h1>
-    <h2>{{ prediction }}</h2>
+    <h2 class="highlight">{{ prediction }}</h2>
+
+    <p><strong>Model Confidence:</strong> {{ confidence }}%</p>
+
+    {% if skills %}
+      <h3>Top Skills Detected:</h3>
+      <ul>
+        {% for skill in skills %}
+          <li>{{ skill }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No specific skills detected.</p>
+    {% endif %}
+
     <a href="/">← Upload another resume</a>
   </div>
 </body>
